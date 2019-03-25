@@ -178,10 +178,10 @@ visualize_kamada_BMI_sized_colored(G,labeldict,nodesize,color_arr)
 #' P(X and Y becoming friends) = $\frac{1}{|b(X)-b(Y)|}$
 
 #' <div style="text-align: center"> b(A) is BMI of person A </div>
-
 #' But we don't use the above expression, We use:
 
-#' <div style="text-align: center"> P(X and Y becoming friends) = $\frac{1}{|b(X)-b(Y)| + 1000}$ </div>
+#' **P(X and Y becoming friends) =**
+#' $\frac{1}{|b(X)-b(Y)| + 1000}$ 
 
 #' The benefit with this is:
 #' * If 2 BMIs are equal then the infinity condition is handeled
@@ -189,15 +189,15 @@ visualize_kamada_BMI_sized_colored(G,labeldict,nodesize,color_arr)
 
 #' Initially, the probability are assigned randomly and we will benchmark the probability of becoming friends to be 0.4. **If the 2 people have probability less than 0.4, we generate the edge, otherwise, we don't.
 
-#' #### Implementing Underweight in green and overweight in yellow
+#' #### Implementing Underweight in green and overweight in yellow and remaining in yellow
 
 def get_colors(G):
 	c = []
 	for each in G.nodes():
 		if G.node[each]['type'] == 'person':
-			if G.node[each]['name'] < 18:
+			if G.node[each]['name'] < 19:
 				c.append('green')
-			elif G.node[each]['name'] > 36:
+			elif G.node[each]['name'] > 34:
 				c.append('yellow')
 			else:
 				c.append('blue')
@@ -257,7 +257,115 @@ def closure(G):
 closure(G)
 visualize_kamada_BMI_sized_colored(G,labeldict,nodesize,color_arr)
 
+#' ### So far it looks like
+#+ echo=False
+del G
+
 #+ echo=True,f_size=(10,10)
+G = create_graph()
+assign_bmi(G)
+add_foci_nodes(G)
+add_foci_edges(G)
 homophily(G)
 closure(G)
+labeldict = get_labels(G)
+nodesize = get_size(G)
+color_arr = get_colors(G)
 visualize_kamada_BMI_sized_colored(G,labeldict,nodesize,color_arr)
+
+#' # Social Influence
+#' If person goes to the gym, their BMI decreases. Social Influence suggests that  BMI increases in the case of eatery.
+
+def change_bmi(G):
+	fnodes = get_foci_nodes(G)
+	for each in fnodes:
+		if G.node[each]['name'] == 'eatout':
+			for each1 in G.neighbors(each):
+				if G.node[each1]['name'] != 40:
+					G.node[each1]['name'] = G.node[each1]['name'] + 1
+
+		if G.node[each]['name'] == 'gym':
+			for each1 in G.neighbors(each):
+				if G.node[each1]['name'] != 15:
+					G.node[each1]['name'] = G.node[each1]['name'] - 1
+
+#' #### Modifying all the visualization functions
+#+ f_size=(10,10)
+
+#Basic graph visualization
+def visualize(G):
+	nx.draw(G)
+	plt.show()
+
+#Graph visualization with nodes sized according to BMI
+def visualize_sized(G):
+	nx.draw(G,with_labels= True, node_size= get_size(G))
+	plt.show()
+
+#Graph visualization with nodes displaying BMI and sized according to BMI
+def visualize_BMI_sized(G):
+	nx.draw(G,labels= get_labels(G),node_size= get_size(G))
+	plt.show()
+
+#Graph visualization with nodes displaying node no. and sized according to BMI
+def visualize_with_BMI(G):
+	nx.draw(G, labels= get_labels(G))
+	plt.show()
+
+#Graph visualization with nodes displaying BMI and sized & coloured according to BMI
+def visualize_BMI_sized_colored(G):
+	nx.draw(G,labels= get_labels(G), with_labels= True,node_size= get_size(G),node_color = get_colors(G))
+	plt.show()
+
+#Graph visualization in Kamada Kawai format, with nodes displaying BMI and sized & coloured according to BMI
+def visualize_kamada_BMI_sized_colored(G):
+	nx.draw_kamada_kawai(G,labels= get_labels(G), with_labels= True,node_size= get_size(G),node_color = get_colors(G))
+	plt.show()
+
+#' ### Iterating to see social influence
+#' The relevance of *graph_list* is shown later
+#+ f_size=(10,10),	
+graph_list = []
+visualize_kamada_BMI_sized_colored(G)
+
+#nx.Graph(G) Creates an instance of G
+graph_list.append(nx.Graph(G))
+
+for t in range(0,10):
+	homophily(G)
+	closure(G)
+	change_bmi(G)
+	visualize_kamada_BMI_sized_colored(G)
+	#nx.Graph(G) Creates an instance of G
+	graph_list.append(nx.Graph(G))
+
+#' ### Analyzing the various graphs stored in the *graph_list*
+#+ f_size=(8,8)
+def plot_density(graph_list):
+	x = list(range(len(graph_list)))
+	y = [nx.density(i) for i in graph_list]
+	print('x =',x,'\ny = ',y)
+	plt.xlabel('Time')
+	plt.ylabel('Density')
+	plt.title('Change in Density')
+	plt.plot(x,y,'bo-')
+	plt.show()
+
+def obesity(G):
+	num = 0
+	for each in G.nodes():
+		if G.node[each]['name'] == 40:
+			num+=1
+	return num
+
+def plot_obesity(graph_list):
+	x = list(range(len(graph_list)))
+	y = [obesity(i) for i in graph_list]
+	plt.xlabel('Time')
+	plt.ylabel('Obesity')
+	plt.title('Change in Obesity')
+	plt.plot(x,y,'ro-')
+	plt.show()
+
+plot_obesity(graph_list)
+plot_density(graph_list)
